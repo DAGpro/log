@@ -6,8 +6,9 @@ namespace Yiisoft\Log\Tests;
 
 use Exception;
 use InvalidArgumentException;
-use Psr\Log\LogLevel;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LogLevel;
 use RuntimeException;
 use stdClass;
 use Yiisoft\Log\Logger;
@@ -16,8 +17,8 @@ use Yiisoft\Log\Tests\TestAsset\DummyTarget;
 
 use function array_map;
 use function array_merge;
-use function json_encode;
 use function implode;
+use function json_encode;
 use function strtoupper;
 use function ucfirst;
 
@@ -25,12 +26,7 @@ final class TargetTest extends TestCase
 {
     private DummyTarget $target;
 
-    public function setUp(): void
-    {
-        $this->target = new DummyTarget();
-    }
-
-    public function filterProvider(): array
+    public static function filterProvider(): array
     {
         return [
             [[], ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']],
@@ -67,9 +63,104 @@ final class TargetTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider filterProvider
-     */
+    public static function invalidCallableEnabledProvider(): array
+    {
+        return [
+            'string' => [fn () => 'a'],
+            'int' => [fn () => 1],
+            'float' => [fn () => 1.1],
+            'array' => [fn () => []],
+            'callable' => [fn () => static fn () => true],
+            'object' => [fn () => new stdClass()],
+        ];
+    }
+
+    public static function invalidStringListProvider(): array
+    {
+        return [
+            'int' => [[1]],
+            'float' => [[1.1]],
+            'array' => [[[]]],
+            'bool' => [[true]],
+            'callable' => [[fn () => null]],
+            'object' => [[new stdClass()]],
+        ];
+    }
+
+    public static function collectMessageProvider(): array
+    {
+        return [
+            'export' => [
+                [
+                    new Message(LogLevel::INFO, 'message-1', ['category' => 'app']),
+                    new Message(LogLevel::DEBUG, 'message-2', ['category' => 'app']),
+                ],
+                true,
+            ],
+            'not-export' => [
+                [
+                    new Message(LogLevel::INFO, 'message-1', ['category' => 'app']),
+                    new Message(LogLevel::DEBUG, 'message-2', ['category' => 'app']),
+                ],
+                false,
+            ],
+        ];
+    }
+
+    public static function contextProvider(): array
+    {
+        return [
+            'string' => [['foo' => 'a'], "foo: 'a'"],
+            'int' => [['foo' => 1], 'foo: 1'],
+            'float' => [['foo' => 1.1], 'foo: 1.1'],
+            'array' => [['foo' => []], 'foo: []'],
+            'null' => [['foo' => null], 'foo: null'],
+            'callable' => [['foo' => fn () => null], 'foo: fn () => null'],
+            'exception' => [['foo' => $exception = new Exception('some error')], "foo: {$exception->__toString()}"],
+            'stringable-object' => [
+                ['foo' => new class () {
+                    public function __toString(): string
+                    {
+                        return 'stringable-object';
+                    }
+                }],
+                'foo: stringable-object',
+            ],
+        ];
+    }
+
+    public static function invalidCallableReturnStringProvider(): array
+    {
+        return [
+            'string' => [fn () => true],
+            'int' => [fn () => 1],
+            'float' => [fn () => 1.1],
+            'array' => [fn () => []],
+            'callable' => [fn () => static fn () => 'a'],
+            'object' => [fn () => new stdClass()],
+        ];
+    }
+
+    public static function invalidMessageListProvider(): array
+    {
+        return [
+            'string' => [['a']],
+            'int' => [[1]],
+            'float' => [[1.1]],
+            'bool' => [[true]],
+            'null' => [[null]],
+            'array' => [[[]]],
+            'callable' => [[fn () => null]],
+            'object' => [[new stdClass()]],
+        ];
+    }
+
+    public function setUp(): void
+    {
+        $this->target = new DummyTarget();
+    }
+
+    #[DataProvider('filterProvider')]
     public function testFilter(array $filter, array $expected): void
     {
         $filter = array_merge($filter, ['commonContext' => []]);
@@ -118,21 +209,7 @@ final class TargetTest extends TestCase
         $this->assertTrue($this->target->isEnabled());
     }
 
-    public function invalidCallableEnabledProvider(): array
-    {
-        return [
-            'string' => [fn () => 'a'],
-            'int' => [fn () => 1],
-            'float' => [fn () => 1.1],
-            'array' => [fn () => []],
-            'callable' => [fn () => static fn () => true],
-            'object' => [fn () => new stdClass()],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidCallableEnabledProvider
-     */
+    #[DataProvider('invalidCallableEnabledProvider')]
     public function testIsEnabledThrowExceptionForCallableReturnNotBoolean(callable $value): void
     {
         $this->target->setEnabled($value);
@@ -216,39 +293,21 @@ final class TargetTest extends TestCase
         $this->assertSame($expected, $this->target->formatMessages());
     }
 
-    public function invalidStringListProvider(): array
-    {
-        return [
-            'int' => [[1]],
-            'float' => [[1.1]],
-            'array' => [[[]]],
-            'bool' => [[true]],
-            'callable' => [[fn () => null]],
-            'object' => [[new stdClass()]],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidStringListProvider
-     */
+    #[DataProvider('invalidStringListProvider')]
     public function testSetCategoriesThrowExceptionForNonStringList(array $list): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->target->setCategories($list);
     }
 
-    /**
-     * @dataProvider invalidStringListProvider
-     */
+    #[DataProvider('invalidStringListProvider')]
     public function testSetExceptThrowExceptionForNonStringList(array $list): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->target->setExcept($list);
     }
 
-    /**
-     * @dataProvider invalidStringListProvider
-     */
+    #[DataProvider('invalidStringListProvider')]
     public function testSetLevelsThrowExceptionForNonStringList(array $list): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -283,29 +342,7 @@ final class TargetTest extends TestCase
         $this->assertSame($expected, $this->target->formatMessages());
     }
 
-    public function collectMessageProvider(): array
-    {
-        return [
-            'export' => [
-                [
-                    new Message(LogLevel::INFO, 'message-1', ['category' => 'app']),
-                    new Message(LogLevel::DEBUG, 'message-2', ['category' => 'app']),
-                ],
-                true,
-            ],
-            'not-export' => [
-                [
-                    new Message(LogLevel::INFO, 'message-1', ['category' => 'app']),
-                    new Message(LogLevel::DEBUG, 'message-2', ['category' => 'app']),
-                ],
-                false,
-            ],
-        ];
-    }
-
-    /**
-     * @dataProvider collectMessageProvider
-     */
+    #[DataProvider('collectMessageProvider')]
     public function testFormatMessagesWithSeparatorAndSetFormatAndSetPrefix(array $messages, bool $export): void
     {
         $this->target->setFormat(static fn (Message $message) => "({$message->level()}) {$message->message()}");
@@ -317,9 +354,7 @@ final class TargetTest extends TestCase
         $this->assertSame($expected, $this->target->formatMessages("\n"));
     }
 
-    /**
-     * @dataProvider collectMessageProvider
-     */
+    #[DataProvider('collectMessageProvider')]
     public function testGetFormattedMessagesAndSetFormatAndSetPrefix(array $messages, bool $export): void
     {
         $this->target->setFormat(static fn (Message $message) => "({$message->level()}) {$message->message()}");
@@ -331,9 +366,7 @@ final class TargetTest extends TestCase
         $this->assertSame($expected, $this->target->getFormattedMessages());
     }
 
-    /**
-     * @dataProvider collectMessageProvider
-     */
+    #[DataProvider('collectMessageProvider')]
     public function testSetExportIntervalAndSetFormat(array $messages, bool $export): void
     {
         $this->target->setExportInterval(3);
@@ -343,31 +376,7 @@ final class TargetTest extends TestCase
         $this->assertSame((int) $export, $this->target->getExportCount());
     }
 
-    public function contextProvider(): array
-    {
-        return [
-            'string' => [['foo' => 'a'], "foo: 'a'"],
-            'int' => [['foo' => 1], 'foo: 1'],
-            'float' => [['foo' => 1.1], 'foo: 1.1'],
-            'array' => [['foo' => []], 'foo: []'],
-            'null' => [['foo' => null], 'foo: null'],
-            'callable' => [['foo' => fn () => null], 'foo: fn () => null'],
-            'exception' => [['foo' => $exception = new Exception('some error')], "foo: {$exception->__toString()}"],
-            'stringable-object' => [
-                ['foo' => new class () {
-                    public function __toString(): string
-                    {
-                        return 'stringable-object';
-                    }
-                }],
-                'foo: stringable-object',
-            ],
-        ];
-    }
-
-    /**
-     * @dataProvider contextProvider
-     */
+    #[DataProvider('contextProvider')]
     public function testMessageContext(array $context, string $expected): void
     {
         $context = array_merge($context, ['category' => 'app', 'time' => 1_508_160_390.6083]);
@@ -378,9 +387,7 @@ final class TargetTest extends TestCase
         $this->assertSame($expected, $this->target->formatMessages());
     }
 
-    /**
-     * @dataProvider contextProvider
-     */
+    #[DataProvider('contextProvider')]
     public function testSetCommonContext(array $commonContext, string $expected): void
     {
         $this->target->setCommonContext($commonContext);
@@ -404,21 +411,7 @@ final class TargetTest extends TestCase
         $this->assertSame($expected, $this->target->formatMessages());
     }
 
-    public function invalidCallableReturnStringProvider(): array
-    {
-        return [
-            'string' => [fn () => true],
-            'int' => [fn () => 1],
-            'float' => [fn () => 1.1],
-            'array' => [fn () => []],
-            'callable' => [fn () => static fn () => 'a'],
-            'object' => [fn () => new stdClass()],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidCallableReturnStringProvider
-     */
+    #[DataProvider('invalidCallableReturnStringProvider')]
     public function testFormatMessageThrowExceptionForFormatCallableReturnNotBoolean(callable $value): void
     {
         $this->target->setFormat($value);
@@ -427,32 +420,14 @@ final class TargetTest extends TestCase
         $this->target->formatMessages();
     }
 
-    public function invalidMessageListProvider(): array
-    {
-        return [
-            'string' => [['a']],
-            'int' => [[1]],
-            'float' => [[1.1]],
-            'bool' => [[true]],
-            'null' => [[null]],
-            'array' => [[[]]],
-            'callable' => [[fn () => null]],
-            'object' => [[new stdClass()]],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidMessageListProvider
-     */
+    #[DataProvider('invalidMessageListProvider')]
     public function testCollectThrowExceptionForNonInstanceMessages(array $messageList): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->target->collect($messageList, true);
     }
 
-    /**
-     * @dataProvider invalidCallableReturnStringProvider
-     */
+    #[DataProvider('invalidCallableReturnStringProvider')]
     public function testFormatMessageThrowExceptionForPrefixCallableReturnNotBoolean(callable $value): void
     {
         $this->target->setPrefix($value);

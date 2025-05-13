@@ -28,8 +28,8 @@ use function sprintf;
  */
 abstract class Target
 {
-    private CategoryFilter $categories;
-    private Formatter $formatter;
+    private readonly CategoryFilter $categories;
+    private readonly Formatter $formatter;
 
     /**
      * @var Message[] The log messages.
@@ -72,12 +72,6 @@ abstract class Target
      * @var bool|callable Enables or disables the current target to export.
      */
     private $enabled = true;
-
-    /**
-     * Exports log messages to a specific destination.
-     * Child classes must implement this method.
-     */
-    abstract protected function export(): void;
 
     /**
      * When defining a constructor in child classes, you must call `parent::__construct()`.
@@ -165,23 +159,6 @@ abstract class Target
         }
 
         $this->levels = $levels;
-        return $this;
-    }
-
-    /**
-     * Sets a user parameters in the `key => value` format that should be logged in a each message.
-     *
-     * @param array $commonContext The user parameters in the `key => value` format.
-     *
-     * @return self
-     *
-     * @see Target::$commonContext
-     *
-     * @deprecated since 2.1, to be removed in 3.0. Use {@see CommonContextProvider} instead.
-     */
-    public function setCommonContext(array $commonContext): self
-    {
-        $this->commonContext = $commonContext;
         return $this;
     }
 
@@ -314,6 +291,12 @@ abstract class Target
     }
 
     /**
+     * Exports log messages to a specific destination.
+     * Child classes must implement this method.
+     */
+    abstract protected function export(): void;
+
+    /**
      * Gets a list of log messages that are retrieved from the logger so far by this log target.
      *
      * @return Message[] The list of log messages.
@@ -367,6 +350,24 @@ abstract class Target
     protected function getCommonContext(): array
     {
         return $this->commonContext;
+    }
+
+
+    /**
+     * Sets a user parameters in the `key => value` format that should be logged in a each message.
+     *
+     * @param array $commonContext The user parameters in the `key => value` format.
+     *
+     * @return self
+     *
+     * @see Target::$commonContext
+     *
+     * @deprecated since 2.1, to be removed in 3.0. Use {@see CommonContextProvider} instead.
+     */
+    public function setCommonContext(array $commonContext): self
+    {
+        $this->commonContext = $commonContext;
+        return $this;
     }
 
     /**

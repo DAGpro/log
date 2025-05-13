@@ -9,7 +9,7 @@ use Yiisoft\Log\ContextProvider\ContextProviderInterface;
 final class StubContextProvider implements ContextProviderInterface
 {
     public function __construct(
-        private array $context = [],
+        private readonly array $context = [],
     ) {
     }
 

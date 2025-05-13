@@ -12,7 +12,7 @@ final class CompositeContextProvider implements ContextProviderInterface
     /**
      * @var ContextProviderInterface[]
      */
-    private array $providers;
+    private readonly array $providers;
 
     public function __construct(
         ContextProviderInterface ...$providers
@@ -20,6 +20,7 @@ final class CompositeContextProvider implements ContextProviderInterface
         $this->providers = $providers;
     }
 
+    #[\Override]
     public function getContext(): array
     {
         $contexts = [];

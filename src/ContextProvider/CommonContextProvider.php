@@ -10,10 +10,11 @@ namespace Yiisoft\Log\ContextProvider;
 final class CommonContextProvider implements ContextProviderInterface
 {
     public function __construct(
-        private array $data,
+        private readonly array $data,
     ) {
     }
 
+    #[\Override]
     public function getContext(): array
     {
         return $this->data;

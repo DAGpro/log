@@ -33,6 +33,7 @@ final class StreamTarget extends Target
         parent::__construct();
     }
 
+    #[\Override]
     protected function export(): void
     {
         $stream = $this->createStream();

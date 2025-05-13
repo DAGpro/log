@@ -32,6 +32,7 @@ final class SystemContextProvider implements ContextProviderInterface
         $this->setExcludedTracePaths($excludedTracePaths);
     }
 
+    #[\Override]
     public function getContext(): array
     {
         /** @psalm-var list<TraceItem> $trace */

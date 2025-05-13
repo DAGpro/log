@@ -12,7 +12,7 @@ final class DummyTarget extends Target
 {
     private int $exportCounter = 0;
     private array $exportMessages = [];
-    private Formatter $exportFormatter;
+    private readonly Formatter $exportFormatter;
 
     public function __construct()
     {

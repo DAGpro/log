@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Yiisoft\Log\Tests;
 
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\InvalidArgumentException;
 use Psr\Log\LogLevel;
@@ -14,19 +15,7 @@ use Yiisoft\Log\Tests\TestAsset\StringableObject;
 
 final class MessageTest extends TestCase
 {
-    public function testGetters(): void
-    {
-        $message = new Message(LogLevel::INFO, 'message', ['foo' => 'bar']);
-
-        $this->assertSame(LogLevel::INFO, $message->level());
-        $this->assertSame('message', $message->message());
-        $this->assertSame(['foo' => 'bar'], $message->context());
-        $this->assertSame('bar', $message->context('foo'));
-        $this->assertNull($message->context('not-exist'));
-        $this->assertSame('default', $message->context('not-exist', 'default'));
-    }
-
-    public function levelProvider(): array
+    public static function levelProvider(): array
     {
         return [
             LogLevel::EMERGENCY => [LogLevel::EMERGENCY],
@@ -40,22 +29,7 @@ final class MessageTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider levelProvider
-     */
-    public function testConstructorAndLevel(string $level): void
-    {
-        $message = new Message($level, 'message');
-        $this->assertSame($level, $message->level());
-    }
-
-    public function testConstructorThrowExceptionForUnknownLevel(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        new Message('unknown', 'message');
-    }
-
-    public function dataParseMessage(): array
+    public static function dataParseMessage(): array
     {
         return [
             'no-placeholder' => [
@@ -160,9 +134,33 @@ final class MessageTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider dataParseMessage
-     */
+    #[DataProvider('dataParseMessage')]
+    public function testGetters(): void
+    {
+        $message = new Message(LogLevel::INFO, 'message', ['foo' => 'bar']);
+
+        $this->assertSame(LogLevel::INFO, $message->level());
+        $this->assertSame('message', $message->message());
+        $this->assertSame(['foo' => 'bar'], $message->context());
+        $this->assertSame('bar', $message->context('foo'));
+        $this->assertNull($message->context('not-exist'));
+        $this->assertSame('default', $message->context('not-exist', 'default'));
+    }
+
+    #[DataProvider('levelProvider')]
+    public function testConstructorAndLevel(string $level): void
+    {
+        $message = new Message($level, 'message');
+        $this->assertSame($level, $message->level());
+    }
+
+    public function testConstructorThrowExceptionForUnknownLevel(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new Message('unknown', 'message');
+    }
+
+    #[DataProvider('dataParseMessage')]
     public function testParseMessage(string $message, array $context, string $expected): void
     {
         $message = new Message(LogLevel::INFO, $message, $context);
@@ -178,9 +176,7 @@ final class MessageTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider dataCategory
-     */
+    #[DataProvider('dataCategory')]
     public function testCategory(string $expected, array $context): void
     {
         $message = new Message(LogLevel::INFO, 'message', $context);

@@ -5,20 +5,16 @@ declare(strict_types=1);
 namespace Yiisoft\Log\Tests\Message;
 
 use InvalidArgumentException;
-use stdClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 use Yiisoft\Log\Message\CategoryFilter;
 
 final class CategoryFilterTest extends TestCase
 {
     private CategoryFilter $categories;
 
-    public function setUp(): void
-    {
-        $this->categories = new CategoryFilter();
-    }
-
-    public function invalidCategoryMessageStructureProvider(): array
+    public static function invalidCategoryMessageStructureProvider(): array
     {
         return [
             'int' => [[1]],
@@ -30,18 +26,19 @@ final class CategoryFilterTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider invalidCategoryMessageStructureProvider
-     */
+    public function setUp(): void
+    {
+        $this->categories = new CategoryFilter();
+    }
+
+    #[DataProvider('invalidCategoryMessageStructureProvider')]
     public function testIncludeThrowExceptionForInvalidCategoryMessageStructure(array $categories): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->categories->include($categories);
     }
 
-    /**
-     * @dataProvider invalidCategoryMessageStructureProvider
-     */
+    #[DataProvider('invalidCategoryMessageStructureProvider')]
     public function testExcludeThrowExceptionForInvalidCategoryMessageStructure(array $categories): void
     {
         $this->expectException(InvalidArgumentException::class);

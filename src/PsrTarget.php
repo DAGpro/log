@@ -16,7 +16,7 @@ final class PsrTarget extends Target
      *
      * @param LoggerInterface $logger The logger instance to be used for messages processing.
      */
-    public function __construct(private LoggerInterface $logger)
+    public function __construct(private readonly LoggerInterface $logger)
     {
         parent::__construct();
     }
@@ -29,6 +29,7 @@ final class PsrTarget extends Target
         return $this->logger;
     }
 
+    #[\Override]
     protected function export(): void
     {
         foreach ($this->getMessages() as $message) {

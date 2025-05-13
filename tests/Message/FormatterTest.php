@@ -7,6 +7,7 @@ namespace Yiisoft\Log\Tests\Message;
 use DateTime;
 use Exception;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use RuntimeException;
@@ -23,12 +24,7 @@ final class FormatterTest extends TestCase
 {
     private Formatter $formatter;
 
-    public function setUp(): void
-    {
-        $this->formatter = new Formatter();
-    }
-
-    public function contextProvider(): array
+    public static function contextProvider(): array
     {
         return [
             'string' => [['foo' => 'a'], "foo: 'a'"],
@@ -50,9 +46,74 @@ final class FormatterTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider contextProvider
-     */
+    public static function invalidCallableReturnStringProvider(): array
+    {
+        return [
+            'string' => [fn () => true],
+            'int' => [fn () => 1],
+            'float' => [fn () => 1.1],
+            'array' => [fn () => []],
+            'null' => [fn () => null],
+            'callable' => [fn () => static fn () => 'a'],
+            'object' => [fn () => new stdClass()],
+        ];
+    }
+
+    public static function dataFormatWithTraceInContext(): array
+    {
+        return [
+            'file-and-line' => [
+                'in /path/to/file:99',
+                [
+                    'file' => '/path/to/file',
+                    'line' => 99,
+                ],
+            ],
+            'function-and-class' => [
+                'App\HomePageAction:App\{closure}',
+                [
+                    'function' => 'App\{closure}',
+                    'class' => 'App\HomePageAction',
+                    'object' => new stdClass(),
+                    'type' => '->',
+                    'args' => [],
+                ],
+            ],
+            'function' => [
+                'App\{closure}',
+                [
+                    'function' => 'App\{closure}',
+                    'type' => '->',
+                    'args' => [],
+                ],
+            ],
+            'unsupported' => [
+                '???',
+                [
+                    'something' => 'strange',
+                ],
+            ],
+        ];
+    }
+
+    public static function dataTime(): array
+    {
+        return [
+            'int' => ['1970-01-01 00:00:01.000000', 1],
+            'float' => ['1970-01-01 00:00:01.230000', 1.23],
+            'string-int' => ['1970-01-01 00:00:23.000000', '23'],
+            'string-float' => ['1970-01-01 00:00:23.600000', '23.6'],
+            'string-float-comma' => ['1970-01-01 00:00:23.600000', '23,6'],
+            'datetime' => ['1970-01-01 00:00:23.00000', new DateTime('@23')],
+        ];
+    }
+
+    public function setUp(): void
+    {
+        $this->formatter = new Formatter();
+    }
+
+    #[DataProvider('contextProvider')]
     public function testDefaultFormat(array $context, string $expected): void
     {
         $context = array_merge($context, ['category' => 'app', 'time' => 1_508_160_390.6083]);
@@ -63,9 +124,7 @@ final class FormatterTest extends TestCase
         $this->assertSame($expected, $this->formatter->format($message, []));
     }
 
-    /**
-     * @dataProvider contextProvider
-     */
+    #[DataProvider('contextProvider')]
     public function testDefaultFormatWithCommonContext(array $commonContext, string $expected): void
     {
         $message = new Message(LogLevel::INFO, 'message', ['category' => 'app', 'time' => 1_508_160_390.6083]);
@@ -158,46 +217,7 @@ final class FormatterTest extends TestCase
         $this->assertSame($expected, $this->formatter->format($message, []));
     }
 
-    public static function dataFormatWithTraceInContext(): array
-    {
-        return [
-            'file-and-line' => [
-                'in /path/to/file:99',
-                [
-                    'file' => '/path/to/file',
-                    'line' => 99,
-                ],
-            ],
-            'function-and-class' => [
-                'App\HomePageAction:App\{closure}',
-                [
-                    'function' => 'App\{closure}',
-                    'class' => 'App\HomePageAction',
-                    'object' => new stdClass(),
-                    'type' => '->',
-                    'args' => [],
-                ],
-            ],
-            'function' => [
-                'App\{closure}',
-                [
-                    'function' => 'App\{closure}',
-                    'type' => '->',
-                    'args' => [],
-                ],
-            ],
-            'unsupported' => [
-                '???',
-                [
-                    'something' => 'strange',
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * @dataProvider dataFormatWithTraceInContext
-     */
+    #[DataProvider('dataFormatWithTraceInContext')]
     public function testFormatWithTraceInContext(string $expectedTrace, array $traceItem): void
     {
         $timestamp = 1_508_160_390;
@@ -215,22 +235,7 @@ final class FormatterTest extends TestCase
         $this->assertSame($expected, $this->formatter->format($message, []));
     }
 
-    public function invalidCallableReturnStringProvider(): array
-    {
-        return [
-            'string' => [fn () => true],
-            'int' => [fn () => 1],
-            'float' => [fn () => 1.1],
-            'array' => [fn () => []],
-            'null' => [fn () => null],
-            'callable' => [fn () => static fn () => 'a'],
-            'object' => [fn () => new stdClass()],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidCallableReturnStringProvider
-     */
+    #[DataProvider('invalidCallableReturnStringProvider')]
     public function testFormatThrowExceptionForFormatCallableReturnNotString(callable $value): void
     {
         $this->formatter->setFormat($value);
@@ -238,9 +243,7 @@ final class FormatterTest extends TestCase
         $this->formatter->format(new Message(LogLevel::INFO, 'test', ['foo' => 'bar']), []);
     }
 
-    /**
-     * @dataProvider invalidCallableReturnStringProvider
-     */
+    #[DataProvider('invalidCallableReturnStringProvider')]
     public function testFormatMessageThrowExceptionForPrefixCallableReturnNotString(callable $value): void
     {
         $this->formatter->setPrefix($value);
@@ -248,21 +251,7 @@ final class FormatterTest extends TestCase
         $this->formatter->format(new Message(LogLevel::INFO, 'test', ['foo' => 'bar']), []);
     }
 
-    public static function dataTime(): array
-    {
-        return [
-            'int' => ['1970-01-01 00:00:01.000000', 1],
-            'float' => ['1970-01-01 00:00:01.230000', 1.23],
-            'string-int' => ['1970-01-01 00:00:23.000000', '23'],
-            'string-float' => ['1970-01-01 00:00:23.600000', '23.6'],
-            'string-float-comma' => ['1970-01-01 00:00:23.600000', '23,6'],
-            'datetime' => ['1970-01-01 00:00:23.00000', new DateTime('@23')],
-        ];
-    }
-
-    /**
-     * @dataProvider dataTime
-     */
+    #[DataProvider('dataTime')]
     public function testTime(string $expected, mixed $value): void
     {
         $formatter = new Formatter();

@@ -135,6 +135,7 @@ final class Logger implements LoggerInterface
         return $this->targets;
     }
 
+    #[\Override]
     public function log(mixed $level, string|Stringable $message, array $context = []): void
     {
         self::assertLevelIsString($level);

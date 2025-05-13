@@ -37,12 +37,12 @@ final class Message
      *
      * @see LogLevel See constants for valid level names.
      */
-    private string $level;
+    private readonly string $level;
 
     /**
      * @var string Log message.
      */
-    private string $message;
+    private readonly string $message;
 
     /**
      * @var array Log message context.
@@ -59,7 +59,7 @@ final class Message
     /**
      * Default time to use when the time is not set in the context.
      */
-    private DateTimeImmutable $defaultTime;
+    private readonly DateTimeImmutable $defaultTime;
 
     /**
      * @param string $level Log message level.
@@ -110,7 +110,7 @@ final class Message
      *
      * @return mixed The context parameter value.
      */
-    public function context(string $name = null, mixed $default = null): mixed
+    public function context(?string $name = null, mixed $default = null): mixed
     {
         if ($name === null) {
             return $this->context;

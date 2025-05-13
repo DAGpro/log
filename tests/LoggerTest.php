@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Yiisoft\Log\Tests;
 
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use ReflectionClass;
-use stdClass;
 use RuntimeException;
+use stdClass;
 use Yiisoft\Log\Logger;
 use Yiisoft\Log\Message;
 use Yiisoft\Log\Target;
@@ -23,6 +24,84 @@ final class LoggerTest extends TestCase
 {
     private Logger $logger;
     private DummyTarget $target;
+
+    public static function messageProvider(): array
+    {
+        return [
+            'string' => ['test', 'test'],
+            'stringable-object' => [
+                $stringableObject = new class () {
+                    public function __toString(): string
+                    {
+                        return 'Stringable object';
+                    }
+                },
+                $stringableObject->__toString(),
+            ],
+        ];
+    }
+
+    public static function invalidListTargetProvider(): array
+    {
+        return [
+            'string' => [['a']],
+            'int' => [[1]],
+            'float' => [[1.1]],
+            'bool' => [[true]],
+            'null' => [[null]],
+            'array' => [[[]]],
+            'callable' => [[fn () => null]],
+            'object' => [[new stdClass()]],
+        ];
+    }
+
+    public static function parseMessageProvider(): array
+    {
+        return [
+            [
+                'no placeholder',
+                ['foo' => 'some'],
+                'no placeholder',
+            ],
+            [
+                'has {foo} placeholder',
+                ['foo' => 'some'],
+                'has some placeholder',
+            ],
+            [
+                'has {foo} placeholder',
+                [],
+                'has {foo} placeholder',
+            ],
+        ];
+    }
+
+    public static function invalidMessageLevelProvider(): array
+    {
+        return [
+            'string' => ['unknown'],
+            'int' => [1],
+            'float' => [1.1],
+            'bool' => [true],
+            'null' => [null],
+            'array' => [[]],
+            'callable' => [fn () => null],
+            'object' => [new stdClass()],
+        ];
+    }
+
+    public static function invalidExcludedTracePathsProvider(): array
+    {
+        return [
+            'int' => [[1]],
+            'float' => [[1.1]],
+            'array' => [[[]]],
+            'bool' => [[true]],
+            'null' => [[null]],
+            'callable' => [[fn () => null]],
+            'object' => [[new stdClass()]],
+        ];
+    }
 
     public function setUp(): void
     {
@@ -68,7 +147,7 @@ final class LoggerTest extends TestCase
         $this->assertSame('application', $messages[0]->context('category'));
         $this->assertSame([
             'file' => __FILE__,
-            'line' => 62,
+            'line' => 141,
             'function' => 'log',
             'class' => Logger::class,
             'type' => '->',
@@ -77,28 +156,8 @@ final class LoggerTest extends TestCase
         $this->assertGreaterThanOrEqual($memory, $messages[0]->context('memory'));
     }
 
-    public function messageProvider(): array
-    {
-        return [
-            'string' => ['test', 'test'],
-            'stringable-object' => [
-                $stringableObject = new class () {
-                    public function __toString(): string
-                    {
-                        return 'Stringable object';
-                    }
-                },
-                $stringableObject->__toString(),
-            ],
-        ];
-    }
-
-    /**
-     * @dataProvider messageProvider
-     *
-     * @param $message
-     */
-    public function testPsrLogInterfaceMethods($message, string $expected): void
+    #[DataProvider('messageProvider')]
+    public function testPsrLogInterfaceMethods(mixed $message, string $expected): void
     {
         $levels = [
             LogLevel::EMERGENCY,
@@ -148,22 +207,7 @@ final class LoggerTest extends TestCase
         }
     }
 
-    public function invalidExcludedTracePathsProvider(): array
-    {
-        return [
-            'int' => [[1]],
-            'float' => [[1.1]],
-            'array' => [[[]]],
-            'bool' => [[true]],
-            'null' => [[null]],
-            'callable' => [[fn () => null]],
-            'object' => [[new stdClass()]],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidExcludedTracePathsProvider
-     */
+    #[DataProvider('invalidExcludedTracePathsProvider')]
     public function testSetExcludedTracePathsThrowExceptionForNonStringList(mixed $list): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -181,24 +225,8 @@ final class LoggerTest extends TestCase
         $this->assertSame('critical', Logger::validateLevel(LogLevel::CRITICAL));
     }
 
-    public function invalidMessageLevelProvider(): array
-    {
-        return [
-            'string' => ['unknown'],
-            'int' => [1],
-            'float' => [1.1],
-            'bool' => [true],
-            'null' => [null],
-            'array' => [[]],
-            'callable' => [fn () => null],
-            'object' => [new stdClass()],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidMessageLevelProvider
-     */
-    public function testGetLevelNameThrowExceptionForInvalidMessageLevel(mixed $level): void
+    #[DataProvider('invalidMessageLevelProvider')]
+    public function testGetLevelNameThrowExceptionForInvalidMessageLevel($level): void
     {
         $this->expectException(\Psr\Log\InvalidArgumentException::class);
         Logger::validateLevel($level);
@@ -215,53 +243,14 @@ final class LoggerTest extends TestCase
         $this->assertSame($target, $logger->getTargets()[0]);
     }
 
-    public function invalidListTargetProvider(): array
-    {
-        return [
-            'string' => [['a']],
-            'int' => [[1]],
-            'float' => [[1.1]],
-            'bool' => [[true]],
-            'null' => [[null]],
-            'array' => [[[]]],
-            'callable' => [[fn () => null]],
-            'object' => [[new stdClass()]],
-        ];
-    }
-
-    /**
-     * @dataProvider invalidListTargetProvider
-     */
+    #[DataProvider('invalidListTargetProvider')]
     public function testConstructorThrowExceptionForNonInstanceTarget(array $targetList): void
     {
         $this->expectException(InvalidArgumentException::class);
         new Logger($targetList);
     }
 
-    public function parseMessageProvider(): array
-    {
-        return [
-            [
-                'no placeholder',
-                ['foo' => 'some'],
-                'no placeholder',
-            ],
-            [
-                'has {foo} placeholder',
-                ['foo' => 'some'],
-                'has some placeholder',
-            ],
-            [
-                'has {foo} placeholder',
-                [],
-                'has {foo} placeholder',
-            ],
-        ];
-    }
-
-    /**
-     * @dataProvider parseMessageProvider
-     */
+    #[DataProvider('parseMessageProvider')]
     public function testParseMessage(string $message, array $context, string $expected): void
     {
         $this->logger->log(LogLevel::INFO, $message, $context);
@@ -369,9 +358,9 @@ final class LoggerTest extends TestCase
         $target1
             ->expects($this->exactly(2))
             ->method('collect')
-            ->withConsecutive(
-                [$this->equalTo([$message]), $this->equalTo(true)],
-                [
+            ->with(
+                $this->logicalOr(
+                    $this->equalTo([$message]),
                     $this->callback(function ($messages) use ($target1, $exception) {
                         $message = $messages[0] ?? null;
                         $text = 'Unable to send log via ' . $target1::class . ': RuntimeException: some error';
@@ -381,8 +370,8 @@ final class LoggerTest extends TestCase
                             && is_float($message->context('time'))
                             && $message->context('exception') === $exception;
                     }),
-                    $this->equalTo(true),
-                ]
+                ),
+                $this->equalTo(true),
             );
 
         $target2

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Yiisoft\Log\Tests;
 
-use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use RuntimeException;
 use Yiisoft\Log\Message;
@@ -16,6 +17,16 @@ use function fopen;
 
 final class StreamTargetTest extends TestCase
 {
+    public static function errorWritingProvider(): array
+    {
+        return [
+            'input-string' => ['php://input'],
+            'input-resource' => [fopen('php://input', 'w')],
+            'temp-not-writable' => [fopen('php://temp', 'r')],
+            'memory-not-writable' => [fopen('php://memory', 'r')],
+        ];
+    }
+
     public function testExportWithStringStreamIdentifier(): void
     {
         $target = $this->createStreamTarget('php://output');
@@ -57,22 +68,11 @@ final class StreamTargetTest extends TestCase
         $this->exportStreamTarget($target);
     }
 
-    public function errorWritingProvider(): array
-    {
-        return [
-            'input-string' => ['php://input'],
-            'input-resource' => [fopen('php://input', 'w')],
-            'temp-not-writable' => [fopen('php://temp', 'r')],
-            'memory-not-writable' => [fopen('php://memory', 'r')],
-        ];
-    }
-
     /**
-     * @dataProvider errorWritingProvider
-     *
      * @param resource|string $stream
      */
-    public function testExportThrowExceptionForErrorWritingToStream($stream): void
+    #[DataProvider('errorWritingProvider')]
+    public function testExportThrowExceptionForErrorWritingToStream(mixed $stream): void
     {
         $target = $this->createStreamTarget($stream);
         $this->expectException(RuntimeException::class);
@@ -82,7 +82,7 @@ final class StreamTargetTest extends TestCase
     /**
      * @param resource|string $stream
      */
-    private function createStreamTarget($stream): StreamTarget
+    private function createStreamTarget(mixed $stream): StreamTarget
     {
         $target = new StreamTarget($stream);
         $target->setFormat(static fn (Message $message) => "[{$message->level()}] {$message->message()}");
